@@ -21,6 +21,7 @@ package main
 import (
 	"fmt"
 	"github.com/bieber/conflag"
+	"github.com/bieber/manuscript/parser"
 	"golang.org/x/crypto/ssh/terminal"
 	"log"
 	"os"
@@ -79,4 +80,17 @@ func main() {
 
 		os.Exit(exitCode)
 	}
+
+	fin, err := os.Open(extraArgs[0])
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fin.Close()
+
+	document, err := parser.Parse(fin)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(document)
 }
