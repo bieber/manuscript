@@ -24,9 +24,9 @@ import (
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/pdf"
 	"golang.org/x/crypto/ssh/terminal"
+	"io"
 	"log"
 	"os"
-	"io"
 )
 
 type Config struct {

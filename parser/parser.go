@@ -56,6 +56,7 @@ type DocumentElement interface{}
 
 type ParagraphBreak bool
 type SceneBreak bool
+type PrologueBreak string
 type PartBreak string
 type ChapterBreak string
 type PlainText string
@@ -288,12 +289,8 @@ func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 	if name == "scene" {
 		e = SceneBreak(true)
 		return
-	} else if name != "chapter" && name != "part" {
+	} else if name != "chapter" && name != "part" && name != "prologue" {
 		err = errors.New("Invalid directive")
-		return
-	}
-	err = eatWhitespace(fin)
-	if err != nil {
 		return
 	}
 
@@ -314,6 +311,8 @@ func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 		e = ChapterBreak(arg)
 	} else if name == "part" {
 		e = PartBreak(arg)
+	} else if name == "prologue" {
+		e = PrologueBreak(arg)
 	}
 
 	return
@@ -417,7 +416,7 @@ func formatText(text []rune, bold, italic bool) DocumentElement {
 }
 
 func addWhitespace(text []rune) []rune {
-	if len(text) > 0 && text[len(text)-1] != ' ' {
+	if len(text) == 0 || text[len(text)-1] != ' ' {
 		text = append(text, ' ')
 	}
 	return text
@@ -446,6 +445,7 @@ func readWord(fin *bufio.Reader) (text string, err error) {
 		}
 
 		if unicode.IsSpace(r) {
+			fin.UnreadRune()
 			break
 		} else {
 			chars = append(chars, r)

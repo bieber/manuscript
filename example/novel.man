@@ -1,0 +1,82 @@
+@type				novel
+@title				Sample Novel
+@shortTitle			Novel
+@authorName			Realname Johnson
+@authorShortName	Johnson
+@authorByline		John Ralston
+@authorAddress		345 W. Elm St. #2
+					North Anderson, CT 90254
+@authorPhoneNumber	(941) 792-2354
+@authorEmail		john@ralston.com
+@authorOrgs			Member, PWA
+					Grand Master, Another Org
+
+@begin
+
+@prologue Title of the Prologue
+
+Lorem *ipsum* **dolor sit amet**, consectetur adipiscing elit. Sed
+dictum justo ***sit amet enim vehicula*** convallis. Nunc vitae est at
+enim pharetra condimentum sit amet ut orci. *Phasellus **feugiat
+lacus** a tortor* euismod, vel ullamcorper justo luctus. Aliquam in
+nibh pharetra, porta est vitae, egestas ipsum. Aliquam nec quam id mi
+fringilla ultricies *a non diam. **Duis eu erat vel mauris*** euismod
+semper. **Phasellus pellentesque *scelerisque* porttitor**. Morbi
+luctus **condimentum sapien, *at pellentesque*** lacus hendrerit
+quis. ***Praesent ac rhoncus** neque*, at dapibus orci. Duis quam
+ante, suscipit a tempus at, facilisis et ex. Praesent ultricies
+suscipit nisi, at ***efficitur est *semper eget. Donec** ac vulputate
+turpis, eu tempor felis.
+
+@part First Part
+@chapter First Chapter
+
+*Aenean vulputate **mollis mi eget* tempus. Nullam** convallis tempor
+tincidunt. Duis eget massa sit amet felis vehicula bibendum. Proin
+fermentum at purus quis interdum. Fusce venenatis metus facilisis
+ultrices facilisis. Nam ac velit quam. Sed quis lacus orci. Ut ac
+hendrerit neque. Nulla laoreet volutpat ipsum, non sollicitudin risus
+molestie in. Nam dignissim aliquam pretium. Interdum et malesuada
+fames ac ante ipsum primis in faucibus. Nunc feugiat, mi eget laoreet
+convallis, magna eros luctus arcu, nec luctus diam purus sit amet
+diam. Suspendisse mi nisl, laoreet at tellus eu, pulvinar molestie
+neque. Integer ullamcorper lorem ut velit finibus, a feugiat nisi
+blandit. In hac habitasse platea dictumst. Etiam eleifend augue sed
+lorem pulvinar lobortis.
+
+@scene
+
+Mauris scelerisque, dui nec facilisis luctus, sapien lorem varius
+magna, eu bibendum lectus nisi nec nunc. Curabitur sit amet tellus non
+est pellentesque euismod. Donec bibendum a nisi laoreet
+vestibulum. Vivamus sit amet lectus quis mauris luctus
+lobortis. Phasellus enim nisl, interdum vitae lacus eu, convallis
+fringilla urna. Pellentesque ex mauris, porta sed quam vitae, blandit
+tincidunt sem. Praesent bibendum neque in nisi sodales, non
+scelerisque ipsum interdum.
+
+@chapter  Second Chapter
+
+Curabitur porta pellentesque imperdiet. Aenean tempus arcu ut accumsan
+tempor. Quisque eu turpis et justo placerat commodo. Class aptent
+taciti sociosqu ad litora torquent per conubia nostra, per inceptos
+himenaeos. Etiam ac libero ut justo gravida posuere. Fusce in arcu
+mollis odio imperdiet sollicitudin. Phasellus sit amet sollicitudin
+ante, sed hendrerit eros. Interdum et malesuada fames ac ante ipsum
+primis in faucibus. Mauris commodo nisl vitae augue maximus, sit amet
+ultrices nunc varius. Vestibulum tempor leo a ex maximus
+interdum. Fusce sed sodales metus.
+
+@part
+@chapter
+
+Donec vel bibendum leo. Duis varius at quam ac euismod. Nulla
+facilisi. Suspendisse ornare maximus sapien, at cursus velit auctor
+sed. Suspendisse in felis in ante tincidunt iaculis. Curabitur nec
+consectetur leo. Sed aliquam commodo nibh sed placerat. Donec vel nunc
+vehicula, congue risus ut, sodales est. Proin ornare, mauris vel
+laoreet ultrices, justo metus laoreet dolor, in bibendum lorem erat
+sed dolor. Vestibulum id ligula augue. Praesent id ullamcorper
+nunc. Donec faucibus semper pellentesque. Ut egestas vestibulum
+eleifend. Vivamus imperdiet pharetra diam, sit amet interdum nunc
+eleifend porttitor.
