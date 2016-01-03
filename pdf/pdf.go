@@ -35,6 +35,8 @@ const fontSize = 12
 const singleSpace = fontSize * 1.15
 const doubleSpace = fontSize * 2
 
+// Render writes the requested document out to the specified io.Writer
+// as a PDF file formatted in manuscript format.
 func Render(fout io.Writer, document parser.Document) error {
 	pdf := gofpdf.New("P", "pt", "Letter", "")
 	pdf.SetMargins(ptsPerInch, ptsPerInch, ptsPerInch)

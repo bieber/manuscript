@@ -29,12 +29,15 @@ import (
 	"os"
 )
 
+// Config lists the command-line configuration options.
 type Config struct {
 	Help     bool
 	Renderer string
 	Output   string
 }
 
+// Renderer defines a callback function that can render a document to
+// an export format.
 type Renderer func(io.Writer, parser.Document) error
 
 var renderers = map[string]Renderer{

@@ -26,6 +26,7 @@ import (
 	"unicode"
 )
 
+// Document defines a story, both its text and relevant metadata.
 type Document struct {
 	Type       StoryType
 	Title      string
@@ -42,28 +43,53 @@ type Document struct {
 	Text []DocumentElement
 }
 
+// StoryType defines the type of a document.
 type StoryType int
 
 const (
+	// ShortStory is a story without parts or chapters.
 	ShortStory StoryType = iota
+	// Novel is a longer story which may have a prologue, parts and/or
+	// chapters.
 	Novel
 )
 
-// This isn't great, performance-wise, but all my elements are just
-// strings with different semantic information attached to the type
-// name, so simple typeswitches should work for now.
+// DocumentElement is just an empty interface.  I'm using type
+// switches to differentiate between the different types of element.
 type DocumentElement interface{}
 
+// ParagraphBreak is just a linebreak between paragraphs.
 type ParagraphBreak bool
+
+// SceneBreak is a break between scenes.
 type SceneBreak bool
+
+// PrologueBreak is a break in the text for a prologue.  It may have a
+// title or be empty.
 type PrologueBreak string
+
+// PartBreak is a break for a new part of a story.  It may have a
+// title or be empty.
 type PartBreak string
+
+// ChapterBreak is a break for a new chapter in the story.  It may
+// have a title or be empty.
 type ChapterBreak string
+
+// PlainText is simple unformatted text.
 type PlainText string
+
+// ItalicText will be rendered as italic.
 type ItalicText string
+
+// BoldText will be rendered as bold.
 type BoldText string
+
+// BoldItalicText will be rendered as both bold and italic.
 type BoldItalicText string
 
+// Parse reads a document from a text file and returns a parsed
+// Document object if there aren't any errors.
 func Parse(rawFIN io.Reader) (d Document, err error) {
 	fin := bufio.NewReader(rawFIN)
 
@@ -410,9 +436,8 @@ func formatText(text []rune, bold, italic bool) DocumentElement {
 		return BoldText(text)
 	} else if italic {
 		return ItalicText(text)
-	} else {
-		return PlainText(text)
 	}
+	return PlainText(text)
 }
 
 func addWhitespace(text []rune) []rune {
