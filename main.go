@@ -22,15 +22,23 @@ import (
 	"fmt"
 	"github.com/bieber/conflag"
 	"github.com/bieber/manuscript/parser"
+	"github.com/bieber/manuscript/pdf"
 	"golang.org/x/crypto/ssh/terminal"
 	"log"
 	"os"
+	"io"
 )
 
 type Config struct {
 	Help     bool
 	Renderer string
 	Output   string
+}
+
+type Renderer func(io.Writer, parser.Document) error
+
+var renderers = map[string]Renderer{
+	"pdf": pdf.Render,
 }
 
 func main() {
@@ -92,5 +100,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(document)
+	fout, err := os.Create(config.Output)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fout.Close()
+
+	if renderer, ok := renderers[config.Renderer]; ok {
+		err := renderer(fout, document)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		log.Fatalf("No renderer named %s", config.Renderer)
+	}
 }

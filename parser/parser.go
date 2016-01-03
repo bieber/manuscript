@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"errors"
 	"io"
+	"strings"
 	"unicode"
 )
 
@@ -55,6 +56,8 @@ type DocumentElement interface{}
 
 type ParagraphBreak bool
 type SceneBreak bool
+type PartBreak string
+type ChapterBreak string
 type PlainText string
 type ItalicText string
 type BoldText string
@@ -63,9 +66,36 @@ type BoldItalicText string
 func Parse(rawFIN io.Reader) (d Document, err error) {
 	fin := bufio.NewReader(rawFIN)
 
+	d, err = parseMetadata(fin)
+	if err != nil {
+		return
+	}
+
+	for {
+		es := []DocumentElement{}
+		es, err = parseParagraphOrDirective(fin)
+
+		if err == io.EOF {
+			if es != nil {
+				d.Text = append(d.Text, es...)
+			}
+			err = nil
+			return
+		}
+		if err != nil {
+			return
+		}
+
+		d.Text = append(d.Text, es...)
+	}
+
+	return
+}
+
+func parseMetadata(fin *bufio.Reader) (d Document, err error) {
 	name, args := "", []string{}
 	for name != "begin" {
-		name, args, err = parseDirective(fin)
+		name, args, err = parseMetadataDirective(fin)
 		if err != nil {
 			return
 		}
@@ -162,8 +192,46 @@ func Parse(rawFIN io.Reader) (d Document, err error) {
 	return
 }
 
-func parseDirective(fin *bufio.Reader) (name string, args []string, err error) {
-	eatWhitespace(fin)
+func parseParagraphOrDirective(
+	fin *bufio.Reader,
+) (es []DocumentElement, err error) {
+	err = eatWhitespace(fin)
+	if err != nil {
+		return nil, err
+	}
+
+	r := '\000'
+	r, _, err = fin.ReadRune()
+	if err != nil {
+		return
+	}
+	if r == '@' {
+		fin.UnreadRune()
+
+		var e DocumentElement
+		e, err = parseDirective(fin)
+		if err != nil {
+			return
+		}
+		es = []DocumentElement{e}
+	} else {
+		fin.UnreadRune()
+		es, err = parseParagraph(fin)
+	}
+
+	return
+}
+
+// The key to metadata directives is that they will always be
+// terminated by the beginning '@' of another directive (except for
+// @begin), and their arguments may span multiple lines.
+func parseMetadataDirective(
+	fin *bufio.Reader,
+) (name string, args []string, err error) {
+	err = eatWhitespace(fin)
+	if err != nil {
+		return
+	}
 
 	r, _, err := fin.ReadRune()
 	if r != '@' {
@@ -176,7 +244,7 @@ func parseDirective(fin *bufio.Reader) (name string, args []string, err error) {
 		return
 	}
 
-	for name != "begin" {
+	for name != "begin" && name != "scene" {
 		err = eatWhitespace(fin)
 		if err != nil {
 			return
@@ -197,6 +265,162 @@ func parseDirective(fin *bufio.Reader) (name string, args []string, err error) {
 	}
 
 	return
+}
+
+// A regular directive in the text may only have a single,
+// newline-terminated argument.
+func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
+	r := '\000'
+	r, _, err = fin.ReadRune()
+	if r != '@' {
+		err = errors.New("Missing '@' in directive")
+	}
+	if err != nil {
+		return
+	}
+
+	name := ""
+	name, err = readWord(fin)
+	if err != nil {
+		return
+	}
+
+	if name == "scene" {
+		e = SceneBreak(true)
+		return
+	} else if name != "chapter" && name != "part" {
+		err = errors.New("Invalid directive")
+		return
+	}
+	err = eatWhitespace(fin)
+	if err != nil {
+		return
+	}
+
+	rawArg := []rune{}
+	for {
+		r, _, err = fin.ReadRune()
+		if err != nil {
+			return
+		}
+		if r == '\n' {
+			break
+		}
+		rawArg = append(rawArg, r)
+	}
+	arg := strings.TrimSpace(string(rawArg))
+
+	if name == "chapter" {
+		e = ChapterBreak(arg)
+	} else if name == "part" {
+		e = PartBreak(arg)
+	}
+
+	return
+}
+
+func parseParagraph(fin *bufio.Reader) (es []DocumentElement, err error) {
+	buf := []rune{}
+	bold := false
+	italic := false
+
+	for {
+		r := '\000'
+		r, _, err = fin.ReadRune()
+		if err != nil {
+			return
+		}
+
+		if r == '\n' {
+			r, _, err = fin.ReadRune()
+			if err != nil {
+				if err == io.EOF {
+					if len(buf) != 0 {
+						es = append(es, formatText(buf, bold, italic))
+					}
+				}
+				return
+			}
+
+			fin.UnreadRune()
+			if r == '\n' || r == '@' {
+				if len(buf) != 0 {
+					es = append(es, formatText(buf, bold, italic))
+				}
+				break
+			} else {
+				buf = addWhitespace(buf)
+			}
+		} else if unicode.IsSpace(r) {
+			buf = addWhitespace(buf)
+		} else if r == '\\' {
+			r, _, err = fin.ReadRune()
+			if err != nil {
+				return
+			}
+			buf = append(buf, r)
+		} else if r == '*' {
+			flipItalic := true
+			flipBold := false
+
+			r, _, err = fin.ReadRune()
+			if err != nil {
+				return
+			}
+
+			if r == '*' {
+				flipBold = true
+				flipItalic = false
+
+				r, _, err = fin.ReadRune()
+				if err != nil {
+					return
+				}
+
+				if r == '*' {
+					flipItalic = true
+				} else {
+					fin.UnreadRune()
+				}
+			} else {
+				fin.UnreadRune()
+			}
+
+			es = append(es, formatText(buf, bold, italic))
+			buf = []rune{}
+
+			if flipBold {
+				bold = !bold
+			}
+			if flipItalic {
+				italic = !italic
+			}
+		} else {
+			buf = append(buf, r)
+		}
+	}
+
+	es = append(es, ParagraphBreak(true))
+	return
+}
+
+func formatText(text []rune, bold, italic bool) DocumentElement {
+	if italic && bold {
+		return BoldItalicText(text)
+	} else if bold {
+		return BoldText(text)
+	} else if italic {
+		return ItalicText(text)
+	} else {
+		return PlainText(text)
+	}
+}
+
+func addWhitespace(text []rune) []rune {
+	if len(text) > 0 && text[len(text)-1] != ' ' {
+		text = append(text, ' ')
+	}
+	return text
 }
 
 func eatWhitespace(fin *bufio.Reader) error {
