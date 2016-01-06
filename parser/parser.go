@@ -128,6 +128,9 @@ func parseMetadata(fin *bufio.Reader) (d Document, err error) {
 		}
 
 		switch name {
+		case "notes":
+			continue
+
 		case "type":
 			if len(args) != 1 {
 				err = errors.New("Missing type")
@@ -278,6 +281,10 @@ func parseMetadataDirective(
 		}
 
 		r, _, err = fin.ReadRune()
+		if err != nil {
+			return
+		}
+
 		fin.UnreadRune()
 		if r == '@' {
 			break
