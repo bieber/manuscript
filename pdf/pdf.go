@@ -166,8 +166,15 @@ func writeElement(
 		pdf.SetX(2 * ptsPerInch)
 
 	case parser.PrologueBreak:
+		bookmarkText := "Prologue"
+		if e != "" {
+			bookmarkText = bookmarkText + ": " + string(e)
+		}
+
 		pdf.SetFont(fontFamily, "", fontSize)
 		pdf.SetXY(ptsPerInch, h/2)
+		pdf.Bookmark(bookmarkText, 0, -1)
+
 		pdf.WriteAligned(
 			w-2*ptsPerInch,
 			singleSpace,
@@ -196,6 +203,7 @@ func writeElement(
 
 		pdf.SetFont(fontFamily, "", fontSize)
 		pdf.SetXY(ptsPerInch, h/2-2*doubleSpace)
+		pdf.Bookmark(text, 0, -1)
 		pdf.WriteAligned(
 			w-2*ptsPerInch,
 			singleSpace,
@@ -205,8 +213,18 @@ func writeElement(
 		pdf.SetXY(2*ptsPerInch, h/2)
 
 	case parser.ChapterBreak:
+		bookmarkText := fmt.Sprintf("Chapter %d", chapterNumber)
+		if e != "" {
+			bookmarkText = bookmarkText + ": " + string(e)
+		}
+		bookmarkLevel := 0
+		if partNumber != 0 {
+			bookmarkLevel = 1
+		}
+
 		pdf.SetFont(fontFamily, "", fontSize)
 		pdf.SetXY(ptsPerInch, h/2)
+		pdf.Bookmark(bookmarkText, bookmarkLevel, -1)
 		pdf.WriteAligned(
 			w-2*ptsPerInch,
 			singleSpace,
