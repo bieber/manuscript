@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/StefanSchroeder/Golang-Roman"
 	"github.com/bieber/manuscript/parser"
+	"github.com/bieber/manuscript/renderers"
 	"github.com/dustin/go-humanize"
 	"github.com/jung-kurt/gofpdf"
 	"io"
@@ -35,44 +36,58 @@ const fontSize = 12
 const singleSpace = fontSize * 1.15
 const doubleSpace = fontSize * 2
 
-// Render writes the requested document out to the specified io.Writer
-// as a PDF file formatted in manuscript format.
-func Render(fout io.Writer, document parser.Document) error {
-	pdf := gofpdf.New("P", "pt", "Letter", "")
-	pdf.SetMargins(ptsPerInch, ptsPerInch, ptsPerInch)
-	pdf.SetAutoPageBreak(true, ptsPerInch)
-	pdf.SetHeaderFunc(func() { writeHeader(pdf, document) })
-	pdf.AddPage()
-
-	writeTitle(pdf, document)
-
-	partNumber := 0
-	chapterNumber := 0
-	var lastElement parser.DocumentElement
-	for _, e := range document.Text {
-		switch e.(type) {
-		case parser.PrologueBreak:
-			pdf.AddPage()
-
-		case parser.PartBreak:
-			partNumber++
-			chapterNumber = 0
-			pdf.AddPage()
-
-		case parser.ChapterBreak:
-			chapterNumber++
-			if _, ok := lastElement.(parser.PartBreak); !ok {
-				pdf.AddPage()
-			}
-		}
-		writeElement(pdf, e, partNumber, chapterNumber)
-		lastElement = e
-	}
-
-	return pdf.Output(fout)
+// Renderer provides a Render method to render the given document to a
+// PDF file.
+type Renderer struct {
+	pageSize      string
+	partNumber    int
+	chapterNumber int
+	lastElement   parser.DocumentElement
+	document      parser.Document
+	pdf           *gofpdf.Fpdf
 }
 
-func writeTitle(pdf *gofpdf.Fpdf, document parser.Document) {
+// New creates a new Renderer given a document and options.
+func New(
+	document parser.Document,
+	options map[string]string,
+) renderers.Renderer {
+	pageSize := "Letter"
+	if s, ok := options["pageSize"]; ok {
+		pageSize = s
+	}
+
+	return &Renderer{
+		pageSize: pageSize,
+		document: document,
+	}
+}
+
+// Render writes the requested document out to the specified io.Writer
+// as a PDF file formatted in manuscript format.
+func (r *Renderer) Render(fout io.Writer) error {
+	r.partNumber = 0
+	r.chapterNumber = 0
+	r.lastElement = nil
+
+	r.pdf = gofpdf.New("P", "pt", r.pageSize, "")
+	r.pdf.SetMargins(ptsPerInch, ptsPerInch, ptsPerInch)
+	r.pdf.SetAutoPageBreak(true, ptsPerInch)
+	r.pdf.SetHeaderFunc(r.writeHeader)
+	r.pdf.AddPage()
+
+	r.writeTitle()
+
+	for _, e := range r.document.Text {
+		r.writeElement(e)
+		r.lastElement = e
+	}
+
+	return r.pdf.Output(fout)
+}
+
+func (r *Renderer) writeTitle() {
+	pdf, document := r.pdf, r.document
 	pdf.SetFont(fontFamily, "", fontSize)
 	pdf.SetXY(ptsPerInch, ptsPerInch)
 
@@ -152,12 +167,8 @@ func writeTitle(pdf *gofpdf.Fpdf, document parser.Document) {
 	}
 }
 
-func writeElement(
-	pdf *gofpdf.Fpdf,
-	element parser.DocumentElement,
-	partNumber int,
-	chapterNumber int,
-) {
+func (r *Renderer) writeElement(element parser.DocumentElement) {
+	pdf := r.pdf
 	w, h := pdf.GetPageSize()
 
 	switch e := element.(type) {
@@ -166,6 +177,7 @@ func writeElement(
 		pdf.SetX(2 * ptsPerInch)
 
 	case parser.PrologueBreak:
+		pdf.AddPage()
 		bookmarkText := "Prologue"
 		if e != "" {
 			bookmarkText = bookmarkText + ": " + string(e)
@@ -196,7 +208,11 @@ func writeElement(
 		pdf.SetXY(2*ptsPerInch, newY)
 
 	case parser.PartBreak:
-		text := "Part " + roman.Roman(partNumber)
+		r.partNumber++
+		r.chapterNumber = 0
+		pdf.AddPage()
+
+		text := "Part " + roman.Roman(r.partNumber)
 		if e != "" {
 			text += ": " + string(e)
 		}
@@ -213,12 +229,17 @@ func writeElement(
 		pdf.SetXY(2*ptsPerInch, h/2)
 
 	case parser.ChapterBreak:
-		bookmarkText := fmt.Sprintf("Chapter %d", chapterNumber)
+		r.chapterNumber++
+		if _, ok := r.lastElement.(parser.PartBreak); !ok {
+			pdf.AddPage()
+		}
+
+		bookmarkText := fmt.Sprintf("Chapter %d", r.chapterNumber)
 		if e != "" {
 			bookmarkText = bookmarkText + ": " + string(e)
 		}
 		bookmarkLevel := 0
-		if partNumber != 0 {
+		if r.partNumber != 0 {
 			bookmarkLevel = 1
 		}
 
@@ -228,7 +249,7 @@ func writeElement(
 		pdf.WriteAligned(
 			w-2*ptsPerInch,
 			singleSpace,
-			fmt.Sprintf("Chapter %d", chapterNumber),
+			fmt.Sprintf("Chapter %d", r.chapterNumber),
 			"C",
 		)
 
@@ -269,7 +290,8 @@ func writeElement(
 	}
 }
 
-func writeHeader(pdf *gofpdf.Fpdf, document parser.Document) {
+func (r *Renderer) writeHeader() {
+	pdf, document := r.pdf, r.document
 	if pdf.PageNo() == 1 {
 		return
 	}

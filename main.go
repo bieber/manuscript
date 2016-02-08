@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/bieber/conflag"
 	"github.com/bieber/manuscript/parser"
+	"github.com/bieber/manuscript/renderers"
 	"github.com/bieber/manuscript/pdf"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -36,12 +37,14 @@ type Config struct {
 	Output   string
 }
 
-// Renderer defines a callback function that can render a document to
-// an export format.
-type Renderer func(io.Writer, parser.Document) error
+// Renderer defines a type with a Render method that will write the
+// formatted manuscript out to the given io.Writer
+type Renderer interface {
+	Render(io.Writer) error
+}
 
-var renderers = map[string]Renderer{
-	"pdf": pdf.Render,
+var allRenderers = map[string]renderers.RendererConstructor {
+	"pdf": pdf.New,
 }
 
 func main() {
@@ -109,8 +112,8 @@ func main() {
 	}
 	defer fout.Close()
 
-	if renderer, ok := renderers[config.Renderer]; ok {
-		err := renderer(fout, document)
+	if renderer, ok := allRenderers[config.Renderer]; ok {
+		err := renderer(document, map[string]string{}).Render(fout)
 		if err != nil {
 			log.Fatal(err)
 		}
