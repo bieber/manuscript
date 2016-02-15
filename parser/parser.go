@@ -243,7 +243,9 @@ func parseParagraphOrDirective(
 		if err != nil {
 			return
 		}
-		es = []DocumentElement{e}
+		if e != nil {
+			es = []DocumentElement{e}
+		}
 	} else {
 		fin.UnreadRune()
 		es, err = parseParagraph(fin)
@@ -319,10 +321,17 @@ func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 		return
 	}
 
+	argDirectives := map[string]bool {
+		"chapter": true,
+		"part": true,
+		"prologue": true,
+		"note": true,
+	}
+
 	if name == "scene" {
 		e = SceneBreak(true)
 		return
-	} else if name != "chapter" && name != "part" && name != "prologue" {
+	} else if _, ok := argDirectives[name]; !ok {
 		err = errors.New("Invalid directive")
 		return
 	}

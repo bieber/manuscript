@@ -31,6 +31,8 @@ turpis, eu tempor felis.
 @part First Part
 @chapter First Chapter
 
+@note This is a note line
+
 *Aenean vulputate **mollis mi eget* tempus. Nullam** convallis tempor
 tincidunt. Duis eget massa sit amet felis vehicula bibendum. Proin
 fermentum at purus quis interdum. Fusce venenatis metus facilisis

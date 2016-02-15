@@ -28,6 +28,8 @@ turpis, eu tempor felis.
 
 \*\*\\
 
+@note This is a note line which will not appear in the output
+
 *Aenean vulputate **mollis mi eget* tempus. Nullam** convallis tempor
 tincidunt. Duis eget massa sit amet felis vehicula bibendum. Proin
 fermentum at purus quis interdum. Fusce venenatis metus facilisis
