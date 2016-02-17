@@ -19,16 +19,56 @@
 package renderers
 
 import (
+	"fmt"
 	"github.com/bieber/manuscript/parser"
 	"io"
+	"regexp"
+	"strings"
 )
 
 // RendererConstructor is a function that creates a new Renderer given
 // a document and a set of options as string key/value pairs.
-type RendererConstructor func(parser.Document, map[string]string) Renderer
+type RendererConstructor func(
+	parser.Document,
+	map[string]string,
+) (Renderer, error)
 
 // Renderer defines an object capable of rendering a document.
 // to the given output.
 type Renderer interface {
 	Render(io.Writer) error
+}
+
+// Resolve attempts to find a match for the given document and
+// renderer option string given the available set of renderer
+// constructors.  If successful, it returns the newly instantiated
+// renderer.
+func Resolve(
+	allRenderers map[string]RendererConstructor,
+	document parser.Document,
+	renderOption string,
+) (Renderer, error) {
+	matcher := regexp.MustCompile(
+		`^(\w+)(?:\((\s*\w+\s*=\s*\w+\s*(?:,\s*\w+\s*=\s*\w+\s*)*)\))?$`,
+	)
+	matches := matcher.FindStringSubmatch(renderOption)
+	if len(matches) != 3 {
+		return nil, fmt.Errorf("Invalid renderer string %s", renderOption)
+	}
+
+	rendererName := matches[1]
+	rendererArgs := map[string]string{}
+	if matches[2] != "" {
+		argSets := strings.Split(matches[2], ",")
+		for _, argSet := range argSets {
+			parts := strings.Split(argSet, "=")
+			k, v := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+			rendererArgs[k] = v
+		}
+	}
+
+	if constructor, ok := allRenderers[rendererName]; ok {
+		return constructor(document, rendererArgs)
+	}
+	return nil, fmt.Errorf("%s is not a valid renderer", rendererName)
 }

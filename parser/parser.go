@@ -321,11 +321,11 @@ func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 		return
 	}
 
-	argDirectives := map[string]bool {
-		"chapter": true,
-		"part": true,
+	argDirectives := map[string]bool{
+		"chapter":  true,
+		"part":     true,
 		"prologue": true,
-		"note": true,
+		"note":     true,
 	}
 
 	if name == "scene" {

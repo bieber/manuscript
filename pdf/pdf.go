@@ -39,28 +39,39 @@ const doubleSpace = fontSize * 2
 // Renderer provides a Render method to render the given document to a
 // PDF file.
 type Renderer struct {
-	pageSize      string
-	partNumber    int
-	chapterNumber int
-	lastElement   parser.DocumentElement
-	document      parser.Document
-	pdf           *gofpdf.Fpdf
+	pageSize        string
+	pageOrientation string
+	partNumber      int
+	chapterNumber   int
+	lastElement     parser.DocumentElement
+	document        parser.Document
+	pdf             *gofpdf.Fpdf
 }
 
 // New creates a new Renderer given a document and options.
 func New(
 	document parser.Document,
 	options map[string]string,
-) renderers.Renderer {
+) (renderers.Renderer, error) {
 	pageSize := "Letter"
-	if s, ok := options["pageSize"]; ok {
-		pageSize = s
+	pageOrientation := "P"
+
+	for k, v := range options {
+		switch k {
+		case "pageSize":
+			pageSize = v
+		case "pageOrientation":
+			pageOrientation = v
+		default:
+			return nil, fmt.Errorf("Invalid PDF option %s", k)
+		}
 	}
 
 	return &Renderer{
-		pageSize: pageSize,
-		document: document,
-	}
+		pageSize:        pageSize,
+		pageOrientation: pageOrientation,
+		document:        document,
+	}, nil
 }
 
 // Render writes the requested document out to the specified io.Writer
@@ -70,7 +81,7 @@ func (r *Renderer) Render(fout io.Writer) error {
 	r.chapterNumber = 0
 	r.lastElement = nil
 
-	r.pdf = gofpdf.New("P", "pt", r.pageSize, "")
+	r.pdf = gofpdf.New(r.pageOrientation, "pt", r.pageSize, "")
 	r.pdf.SetMargins(ptsPerInch, ptsPerInch, ptsPerInch)
 	r.pdf.SetAutoPageBreak(true, ptsPerInch)
 	r.pdf.SetHeaderFunc(r.writeHeader)

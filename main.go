@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"github.com/bieber/conflag"
 	"github.com/bieber/manuscript/parser"
-	"github.com/bieber/manuscript/renderers"
 	"github.com/bieber/manuscript/pdf"
+	"github.com/bieber/manuscript/renderers"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"log"
@@ -43,7 +43,7 @@ type Renderer interface {
 	Render(io.Writer) error
 }
 
-var allRenderers = map[string]renderers.RendererConstructor {
+var allRenderers = map[string]renderers.RendererConstructor{
 	"pdf": pdf.New,
 }
 
@@ -106,18 +106,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	renderer, err := renderers.Resolve(allRenderers, document, config.Renderer)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	fout, err := os.Create(config.Output)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer fout.Close()
 
-	if renderer, ok := allRenderers[config.Renderer]; ok {
-		err := renderer(document, map[string]string{}).Render(fout)
-		if err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		log.Fatalf("No renderer named %s", config.Renderer)
+	if err = renderer.Render(fout); err != nil {
+		log.Fatal(err)
 	}
 }
