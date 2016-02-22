@@ -49,7 +49,7 @@ func Resolve(
 	renderOption string,
 ) (Renderer, error) {
 	matcher := regexp.MustCompile(
-		`^(\w+)(?:\((\s*\w+\s*=\s*\w+\s*(?:,\s*\w+\s*=\s*\w+\s*)*)\))?$`,
+		`^(\w+)(?:\((\s*\w+\s*=\s*.+\s*(?:,\s*\w+\s*=\s*.+\s*)*)\))?$`,
 	)
 	matches := matcher.FindStringSubmatch(renderOption)
 	if len(matches) != 3 {
