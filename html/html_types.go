@@ -25,13 +25,18 @@ import (
 type document struct {
 	XMLName xml.Name `xml:"html"`
 	Head    header
-	Body    []interface{}
+	Body    body
 }
 
 type header struct {
 	XMLName    xml.Name `xml:"head"`
 	Title      string   `xml:"title"`
 	StyleSheet *link
+}
+
+type body struct {
+	XMLName xml.Name `xml:"body"`
+	Content div
 }
 
 type link struct {
@@ -45,4 +50,25 @@ type div struct {
 	XMLName  xml.Name `xml:"div"`
 	Class    string   `xml:"class,attr"`
 	Children []interface{}
+}
+
+type h1 struct {
+	XMLName xml.Name `xml:"h1"`
+	Title   string   `xml:",chardata"`
+}
+
+type p struct {
+	XMLName xml.Name `xml:"p"`
+	Class   string   `xml:"class,attr,omitempty"`
+	Text    string   `xml:",chardata"`
+}
+
+type span struct {
+	XMLName xml.Name `xml:"span"`
+	Class   string   `xml:"class,attr,omitempty"`
+	Text    string   `xml:",chardata"`
+}
+
+type br struct {
+	XMLName xml.Name `xml:"br"`
 }

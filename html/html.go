@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/renderers"
+	"github.com/dustin/go-humanize"
 	"io"
 )
 
@@ -30,6 +31,7 @@ import (
 // an HTML file.
 type Renderer struct {
 	styleSheet    string
+	authorInfo    bool
 	partNumber    int
 	chapterNumber int
 	lastElement   parser.DocumentElement
@@ -43,18 +45,22 @@ func New(
 	options map[string]string,
 ) (renderers.Renderer, error) {
 	styleSheet := ""
+	authorInfo := false
 
 	for k, v := range options {
 		switch k {
 		case "styleSheet":
 			styleSheet = v
+		case "authorInfo":
+			authorInfo = argIsTrue(v)
 		default:
-			return nil, fmt.Errorf("Invalid HTMLL option %s", k)
+			return nil, fmt.Errorf("Invalid HTML option %s", k)
 		}
 	}
 
 	return &Renderer{
 		styleSheet: styleSheet,
+		authorInfo: authorInfo,
 		document:   document,
 	}, nil
 }
@@ -64,10 +70,19 @@ func New(
 func (r *Renderer) Render(fout io.Writer) error {
 	encoder := xml.NewEncoder(fout)
 
+	bodyContents := []interface{}{}
+	bodyContents = append(bodyContents, r.renderFrontMatter())
+
 	encoder.Indent("", "\t")
 	return encoder.Encode(
 		document{
 			Head: r.renderHead(),
+			Body: body{
+				Content: div{
+					Class:    "container",
+					Children: bodyContents,
+				},
+			},
 		},
 	)
 }
@@ -84,5 +99,75 @@ func (r *Renderer) renderHead() header {
 	return header{
 		Title:      r.document.Title,
 		StyleSheet: styleSheet,
+	}
+}
+
+func (r *Renderer) renderFrontMatter() div {
+	document := r.document
+
+	contents := []interface{}{}
+
+	if r.authorInfo {
+		authorContents := []interface{}{}
+		if document.Author.Name != "" {
+			authorContents = append(
+				authorContents,
+				span{Text: document.Author.Name},
+				br{},
+			)
+		}
+		if len(document.Author.Address) != 0 {
+			for _, l := range document.Author.Address {
+				authorContents = append(
+					authorContents,
+					span{Text: l},
+					br{},
+				)
+			}
+		}
+		if document.Author.PhoneNumber != "" {
+			authorContents = append(
+				authorContents,
+				span{Text: document.Author.PhoneNumber},
+				br{},
+			)
+		}
+		if document.Author.EmailAddress != "" {
+			authorContents = append(
+				authorContents,
+				span{Text: document.Author.EmailAddress},
+				br{},
+			)
+		}
+		if len(document.Author.ProfessionalOrgs) != 0 {
+			for _, l := range document.Author.ProfessionalOrgs {
+				authorContents = append(
+					authorContents,
+					span{Text: l},
+					br{},
+				)
+			}
+		}
+
+		contents = append(
+			contents,
+			div{Class: "author_info", Children: authorContents},
+		)
+	}
+
+	contents = append(contents, h1{Title: document.Title})
+
+	authorText := "by " + document.Author.Byline
+	if r.document.Type == parser.Novel {
+		authorText = "a novel " + authorText
+	}
+	contents = append(contents, p{Class: "byline", Text: authorText})
+
+	wordText := "about " + humanize.Comma(document.WordCount()) + " words"
+	contents = append(contents, p{Class: "word_count", Text: wordText})
+
+	return div{
+		Class:    "front_matter",
+		Children: contents,
 	}
 }
