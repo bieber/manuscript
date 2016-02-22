@@ -68,7 +68,7 @@ func New(
 // Render writes the requested document out to the specified io.Writer
 // as an HTML file.
 func (r *Renderer) Render(fout io.Writer) error {
-	encoder := xml.NewEncoder(fout)
+	encoder := xml.NewEncoder(selfClosingRemover{fout})
 
 	bodyContents := []interface{}{}
 	bodyContents = append(bodyContents, r.renderFrontMatter())

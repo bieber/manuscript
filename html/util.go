@@ -19,10 +19,40 @@
 package html
 
 import (
+	"bytes"
+	"fmt"
+	"io"
 	"strings"
 )
 
 func argIsTrue(arg string) bool {
 	arg = strings.ToLower(arg)
 	return arg == "t" || arg == "true" || arg == "yes" || arg == "y"
+}
+
+type selfClosingRemover struct {
+	dest io.Writer
+}
+
+// This is a pretty fragile implementation that will definitely break
+// if Write ever comes in batches and one of them straddles a
+// self-closing close tag.  I'm hoping that won't happen (it looks
+// like the XML encoder just dumps the whole file at once), but if it
+// does then I'll need to come back here and do some reasonable
+// buffering.
+func (s selfClosingRemover) Write(p []byte) (n int, err error) {
+	n = len(p)
+	toRemove := []string{
+		"br",
+		"link",
+	}
+
+	fmt.Println("writing")
+
+	for _, tag := range toRemove {
+		p = bytes.Replace(p, []byte("</"+tag+">"), []byte{}, -1)
+	}
+
+	_, err = s.dest.Write(p)
+	return
 }
