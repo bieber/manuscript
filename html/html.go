@@ -21,6 +21,7 @@ package html
 import (
 	"encoding/xml"
 	"fmt"
+	"github.com/StefanSchroeder/Golang-Roman"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/renderers"
 	"github.com/dustin/go-humanize"
@@ -32,6 +33,10 @@ import (
 type Renderer struct {
 	styleSheet    string
 	authorInfo    bool
+	includeTOC    bool
+	prologues     []string
+	parts         []string
+	chapters      []string
 	partNumber    int
 	chapterNumber int
 	lastElement   parser.DocumentElement
@@ -44,25 +49,37 @@ func New(
 	document parser.Document,
 	options map[string]string,
 ) (renderers.Renderer, error) {
-	styleSheet := ""
-	authorInfo := false
+	renderer := Renderer{
+		document: document,
+	}
 
 	for k, v := range options {
 		switch k {
 		case "styleSheet":
-			styleSheet = v
+			renderer.styleSheet = v
 		case "authorInfo":
-			authorInfo = argIsTrue(v)
+			renderer.authorInfo = argIsTrue(v)
+		case "includeTOC":
+			renderer.includeTOC = argIsTrue(v)
 		default:
 			return nil, fmt.Errorf("Invalid HTML option %s", k)
 		}
 	}
 
-	return &Renderer{
-		styleSheet: styleSheet,
-		authorInfo: authorInfo,
-		document:   document,
-	}, nil
+	for _, element := range document.Text {
+		switch e := element.(type) {
+		case parser.PrologueBreak:
+			renderer.prologues = append(renderer.prologues, string(e))
+
+		case parser.PartBreak:
+			renderer.parts = append(renderer.parts, string(e))
+
+		case parser.ChapterBreak:
+			renderer.chapters = append(renderer.chapters, string(e))
+		}
+	}
+
+	return &renderer, nil
 }
 
 // Render writes the requested document out to the specified io.Writer
@@ -72,6 +89,10 @@ func (r *Renderer) Render(fout io.Writer) error {
 
 	bodyContents := []interface{}{}
 	bodyContents = append(bodyContents, r.renderFrontMatter())
+
+	if r.includeTOC {
+		bodyContents = append(bodyContents, r.renderTOC())
+	}
 
 	encoder.Indent("", "\t")
 	return encoder.Encode(
@@ -169,5 +190,116 @@ func (r *Renderer) renderFrontMatter() div {
 	return div{
 		Class:    "front_matter",
 		Children: contents,
+	}
+}
+
+func (r *Renderer) renderTOC() div {
+	partNumber, chapterNumber, prologueNumber := 0, 0, 0
+	part := li{}
+	listChildren := []interface{}{}
+
+	addNode := func(node interface{}) {
+		// Indicates that we actually have one or more parts
+		if len(part.Children) != 0 {
+			if len(part.Children) < 2 {
+				// There is no existing list of sub-items in this part yet
+				part.Children = append(
+					part.Children,
+					ol{
+						Class:    "toc_inner",
+						Children: []interface{}{node},
+					},
+				)
+			} else {
+				// There is, so just add to it
+				existingChildren := part.Children[1].(ol).Children
+				part.Children[1] = ol{
+					Class:    "toc_inner",
+					Children: append(existingChildren, node),
+				}
+			}
+		} else {
+			listChildren = append(listChildren, node)
+		}
+	}
+
+	addPart := func(text string) {
+		if len(part.Children) != 0 {
+			listChildren = append(listChildren, part)
+			part = li{}
+		}
+		part.Children = append(
+			part.Children,
+			a{
+				HREF: fmt.Sprintf("#part_%d", partNumber),
+				Text: text,
+			},
+		)
+	}
+
+	for _, element := range r.document.Text {
+		switch e := element.(type) {
+
+		case parser.PartBreak:
+			partNumber++
+			chapterNumber = 0
+
+			text := "Part " + roman.Roman(partNumber)
+			if e != "" {
+				text += ": " + string(e)
+			}
+			addPart(text)
+
+		case parser.PrologueBreak:
+			prologueNumber++
+
+			text := "Prologue"
+			if e != "" {
+				text += ": " + string(e)
+			}
+
+			addNode(
+				li{
+					Children: []interface{}{
+						a{
+							HREF: fmt.Sprintf("#prologue_%d", prologueNumber),
+							Text: text,
+						},
+					},
+				},
+			)
+
+		case parser.ChapterBreak:
+			chapterNumber++
+
+			text := fmt.Sprintf("Chapter %d", chapterNumber)
+			if e != "" {
+				text += ": " + string(e)
+			}
+
+			addNode(
+				li{
+					Children: []interface{}{
+						a{
+							HREF: fmt.Sprintf(
+								"#chapter_%d_%d",
+								partNumber,
+								chapterNumber,
+							),
+							Text: text,
+						},
+					},
+				},
+			)
+		}
+	}
+
+	if len(part.Children) != 0 {
+		listChildren = append(listChildren, part)
+	}
+
+	return div{
+		Class:    "table_of_contents",
+		Children: []interface{}{ol{Class: "toc_outer", Children: listChildren}},
 	}
 }

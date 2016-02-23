@@ -20,7 +20,6 @@ package html
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 )
@@ -46,8 +45,6 @@ func (s selfClosingRemover) Write(p []byte) (n int, err error) {
 		"br",
 		"link",
 	}
-
-	fmt.Println("writing")
 
 	for _, tag := range toRemove {
 		p = bytes.Replace(p, []byte("</"+tag+">"), []byte{}, -1)

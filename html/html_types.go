@@ -69,6 +69,23 @@ type span struct {
 	Text    string   `xml:",chardata"`
 }
 
+type a struct {
+	XMLName xml.Name `xml:"a"`
+	HREF    string   `xml:"href,attr,omitempty"`
+	Text    string   `xml:",chardata"`
+}
+
 type br struct {
 	XMLName xml.Name `xml:"br"`
+}
+
+type ol struct {
+	XMLName  xml.Name `xml:"ol"`
+	Class    string   `xml:"class,attr,omitempty"`
+	Children []interface{}
+}
+
+type li struct {
+	XMLName  xml.Name `xml:"li"`
+	Children []interface{}
 }

@@ -70,6 +70,10 @@ ultrices nunc varius. Vestibulum tempor leo a ex maximus
 interdum. Fusce sed sodales metus.
 
 @part
+@prologue
+
+This is a prologue within a part
+
 @chapter
 
 Donec vel bibendum leo. Duis varius at quam ac euismod. Nulla
