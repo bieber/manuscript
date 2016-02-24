@@ -20,6 +20,7 @@ package html
 
 import (
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"github.com/StefanSchroeder/Golang-Roman"
 	"github.com/bieber/manuscript/parser"
@@ -398,7 +399,7 @@ func (r *Renderer) renderChapter() div {
 
 		text := fmt.Sprintf("Chapter %d", r.chapterNumber)
 		if e != "" {
-			text = ": " + string(e)
+			text += ": " + string(e)
 		}
 
 		children = append(
@@ -431,12 +432,82 @@ outer:
 			break outer
 		}
 
-		r.nextElement()
+		children = append(children, r.renderScene())
 	}
 
 	return div{
 		Class:    class,
 		Children: children,
+	}
+}
+
+func (r *Renderer) renderScene() div {
+	children := []interface{}{}
+
+outer:
+	for r.hasNextElement() {
+		switch r.peekElement().(type) {
+		case parser.PartBreak:
+			break outer
+		case parser.PrologueBreak:
+			break outer
+		case parser.ChapterBreak:
+			break outer
+		case parser.SceneBreak:
+			r.nextElement()
+			break outer
+		}
+
+		children = append(children, r.renderParagraph())
+	}
+
+	return div{
+		Class:    "scene",
+		Children: children,
+	}
+}
+
+func (r *Renderer) renderParagraph() p {
+	children := []interface{}{}
+
+outer:
+	for r.hasNextElement() {
+		switch r.peekElement().(type) {
+		case parser.PartBreak:
+			break outer
+		case parser.PrologueBreak:
+			break outer
+		case parser.ChapterBreak:
+			break outer
+		case parser.SceneBreak:
+			break outer
+		case parser.ParagraphBreak:
+			r.nextElement()
+			break outer
+		}
+
+		children = append(children, r.renderElement())
+	}
+
+	return p{Children: children}
+}
+
+func (r *Renderer) renderElement() interface{} {
+	switch e := r.nextElement().(type) {
+	case parser.PlainText:
+		return span{Text: string(e)}
+	case parser.ItalicText:
+		return em{Text: string(e)}
+	case parser.BoldText:
+		return strong{Text: string(e)}
+	case parser.BoldItalicText:
+		return strong{Child: em{Text: string(e)}}
+	default:
+		panic(
+			errors.New(
+				"html: Unexpected document element passed to renderElement",
+			),
+		)
 	}
 }
 

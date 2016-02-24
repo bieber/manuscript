@@ -68,15 +68,27 @@ type h3 struct {
 }
 
 type p struct {
-	XMLName xml.Name `xml:"p"`
-	Class   string   `xml:"class,attr,omitempty"`
-	Text    string   `xml:",chardata"`
+	XMLName  xml.Name      `xml:"p"`
+	Class    string        `xml:"class,attr,omitempty"`
+	Text     string        `xml:",chardata"`
+	Children []interface{} `xml:",omitempty"`
 }
 
 type span struct {
 	XMLName xml.Name `xml:"span"`
 	Class   string   `xml:"class,attr,omitempty"`
 	Text    string   `xml:",chardata"`
+}
+
+type em struct {
+	XMLName xml.Name `xml:"em"`
+	Text    string   `xml:",chardata"`
+}
+
+type strong struct {
+	XMLName xml.Name    `xml:"strong"`
+	Text    string      `xml:",chardata"`
+	Child   interface{} `xml:",omitempty"`
 }
 
 type a struct {

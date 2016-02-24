@@ -13,7 +13,8 @@
 
 @begin
 
-Here's some text without a chapter, prologue, or part.
+Here's some text without a chapter, prologue, or part.  Let's throw an
+ampersand in here for testing with HTML & escaped characters.
 
 @prologue Title of the Prologue
 
