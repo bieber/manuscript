@@ -57,6 +57,16 @@ type h1 struct {
 	Title   string   `xml:",chardata"`
 }
 
+type h2 struct {
+	XMLName  xml.Name `xml:"h2"`
+	Children []interface{}
+}
+
+type h3 struct {
+	XMLName  xml.Name `xml:"h3"`
+	Children []interface{}
+}
+
 type p struct {
 	XMLName xml.Name `xml:"p"`
 	Class   string   `xml:"class,attr,omitempty"`
@@ -71,6 +81,7 @@ type span struct {
 
 type a struct {
 	XMLName xml.Name `xml:"a"`
+	Name    string   `xml:"name,attr,omitempty"`
 	HREF    string   `xml:"href,attr,omitempty"`
 	Text    string   `xml:",chardata"`
 }

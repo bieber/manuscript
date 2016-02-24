@@ -13,6 +13,8 @@
 
 @begin
 
+Here's some text without a chapter, prologue, or part.
+
 @prologue Title of the Prologue
 
 Lorem *ipsum* **dolor sit amet**, consectetur adipiscing elit. Sed
@@ -28,7 +30,14 @@ ante, suscipit a tempus at, facilisis et ex. Praesent ultricies
 suscipit nisi, at ***efficitur est *semper eget. Donec** ac vulputate
 turpis, eu tempor felis.
 
+@chapter
+
+Here's a chapter without a part.
+
 @part First Part
+
+Here's some text without a chapter
+
 @chapter First Chapter
 
 @note This is a note line

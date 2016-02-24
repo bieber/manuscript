@@ -31,16 +31,17 @@ import (
 // Renderer provides a Render method to render the given document to
 // an HTML file.
 type Renderer struct {
-	styleSheet    string
-	authorInfo    bool
-	includeTOC    bool
-	prologues     []string
-	parts         []string
-	chapters      []string
-	partNumber    int
-	chapterNumber int
-	lastElement   parser.DocumentElement
-	document      parser.Document
+	styleSheet     string
+	authorInfo     bool
+	includeTOC     bool
+	prologues      []string
+	parts          []string
+	chapters       []string
+	partNumber     int
+	chapterNumber  int
+	prologueNumber int
+	textPosition   int
+	document       parser.Document
 }
 
 // New constructs a new Renderer for the given document and
@@ -92,6 +93,10 @@ func (r *Renderer) Render(fout io.Writer) error {
 
 	if r.includeTOC {
 		bodyContents = append(bodyContents, r.renderTOC())
+	}
+
+	for r.textPosition < len(r.document.Text) {
+		bodyContents = append(bodyContents, r.renderPart())
 	}
 
 	encoder.Indent("", "\t")
@@ -302,4 +307,153 @@ func (r *Renderer) renderTOC() div {
 		Class:    "table_of_contents",
 		Children: []interface{}{ol{Class: "toc_outer", Children: listChildren}},
 	}
+}
+
+func (r *Renderer) renderPart() div {
+	// We may not always have an explicit part marker (short stories,
+	// novels without parts, or just prologue text before the first
+	// part of a novel).  For these cases, we'll still render using
+	// the regular procedure for a part but just leave out the header
+	// and call it an "anonymous part."
+	class := "anonymous_part"
+	children := []interface{}{}
+
+	if e, ok := r.peekElement().(parser.PartBreak); ok {
+		r.partNumber++
+		r.chapterNumber = 0
+
+		class = "part"
+		text := "Part " + roman.Roman(r.partNumber)
+		if e != "" {
+			text += ": " + string(e)
+		}
+
+		children = append(
+			children,
+			h2{
+				Children: []interface{}{
+					a{
+						Name: fmt.Sprintf("part_%d", r.partNumber),
+						Text: text,
+					},
+				},
+			},
+		)
+		r.nextElement()
+	}
+
+	for r.hasNextElement() {
+		if _, ok := r.peekElement().(parser.PartBreak); ok {
+			break
+		}
+
+		children = append(
+			children,
+			r.renderChapter(),
+		)
+	}
+
+	return div{
+		Class:    class,
+		Children: children,
+	}
+
+}
+
+func (r *Renderer) renderChapter() div {
+	// We may not always have an explicit chapter or prologue marker
+	// (short stories, or just loose text at the beginning of a story
+	// or part).  In that case we still render using the normal method
+	// for a chapter, but call it an "anonymous chapter."
+	class := "anonymous_chapter"
+	children := []interface{}{}
+
+	switch e := r.peekElement().(type) {
+	case parser.PrologueBreak:
+		r.prologueNumber++
+		class = "chapter prologue"
+
+		text := "Prologue"
+		if e != "" {
+			text += ": " + string(e)
+		}
+
+		children = append(
+			children,
+			h3{
+				Children: []interface{}{
+					a{
+						Name: fmt.Sprintf("prologue_%d", r.prologueNumber),
+						Text: text,
+					},
+				},
+			},
+		)
+
+		r.nextElement()
+
+	case parser.ChapterBreak:
+		r.chapterNumber++
+		class = "chapter"
+
+		text := fmt.Sprintf("Chapter %d", r.chapterNumber)
+		if e != "" {
+			text = ": " + string(e)
+		}
+
+		children = append(
+			children,
+			h3{
+				Children: []interface{}{
+					a{
+						Name: fmt.Sprintf(
+							"chapter_%d_%d",
+							r.partNumber,
+							r.chapterNumber,
+						),
+						Text: text,
+					},
+				},
+			},
+		)
+
+		r.nextElement()
+	}
+
+outer:
+	for r.hasNextElement() {
+		switch r.peekElement().(type) {
+		case parser.PartBreak:
+			break outer
+		case parser.PrologueBreak:
+			break outer
+		case parser.ChapterBreak:
+			break outer
+		}
+
+		r.nextElement()
+	}
+
+	return div{
+		Class:    class,
+		Children: children,
+	}
+}
+
+func (r *Renderer) hasNextElement() bool {
+	return r.textPosition < len(r.document.Text)
+}
+
+func (r *Renderer) peekElement() parser.DocumentElement {
+	return r.document.Text[r.textPosition]
+}
+
+func (r *Renderer) nextElement() parser.DocumentElement {
+	tp := r.textPosition
+	r.textPosition++
+	return r.document.Text[tp]
+}
+
+func (r *Renderer) rewindElement() {
+	r.textPosition--
 }
