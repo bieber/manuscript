@@ -27,6 +27,7 @@ import (
 	"github.com/bieber/manuscript/renderers"
 	"github.com/dustin/go-humanize"
 	"io"
+	"strings"
 )
 
 // Renderer provides a Render method to render the given document to
@@ -35,9 +36,6 @@ type Renderer struct {
 	styleSheet     string
 	authorInfo     bool
 	includeTOC     bool
-	prologues      []string
-	parts          []string
-	chapters       []string
 	partNumber     int
 	chapterNumber  int
 	prologueNumber int
@@ -68,19 +66,6 @@ func New(
 		}
 	}
 
-	for _, element := range document.Text {
-		switch e := element.(type) {
-		case parser.PrologueBreak:
-			renderer.prologues = append(renderer.prologues, string(e))
-
-		case parser.PartBreak:
-			renderer.parts = append(renderer.parts, string(e))
-
-		case parser.ChapterBreak:
-			renderer.chapters = append(renderer.chapters, string(e))
-		}
-	}
-
 	return &renderer, nil
 }
 
@@ -93,11 +78,21 @@ func (r *Renderer) Render(fout io.Writer) error {
 	bodyContents = append(bodyContents, r.renderFrontMatter())
 
 	if r.includeTOC {
-		bodyContents = append(bodyContents, r.renderTOC())
+		toc := r.renderTOC()
+		if len(toc.Children) != 0 {
+			bodyContents = append(bodyContents, toc)
+		}
 	}
 
 	for r.textPosition < len(r.document.Text) {
 		bodyContents = append(bodyContents, r.renderPart())
+	}
+
+	storyTypeClass := ""
+	if r.document.Type == parser.Novel {
+		storyTypeClass = " novel"
+	} else if r.document.Type == parser.ShortStory {
+		storyTypeClass = " short_story"
 	}
 
 	encoder.Indent("", "\t")
@@ -106,7 +101,7 @@ func (r *Renderer) Render(fout io.Writer) error {
 			Head: r.renderHead(),
 			Body: body{
 				Content: div{
-					Class:    "container",
+					Class:    "container" + storyTypeClass,
 					Children: bodyContents,
 				},
 			},
@@ -116,16 +111,30 @@ func (r *Renderer) Render(fout io.Writer) error {
 
 func (r *Renderer) renderHead() header {
 	var styleSheet *link
-	if r.styleSheet != "" {
+	var inlineStyleSheet *style
+	if r.styleSheet == "" {
+		rawStyle := inlineStyle
+
+		styleLines := strings.Split(rawStyle, "\n")
+		for i := range styleLines {
+			if i != len(styleLines)-1 {
+				styleLines[i] = "\t\t\t" + styleLines[i]
+			}
+		}
+
+		inlineStyleSheet = &style{Text: strings.Join(styleLines, "\n") + "\t\t"}
+	} else if r.styleSheet != "" {
 		styleSheet = &link{
 			Rel:  "stylesheet",
 			Type: "text/css",
 			HREF: r.styleSheet,
 		}
 	}
+
 	return header{
 		Title:      r.document.Title,
 		StyleSheet: styleSheet,
+		Style:      inlineStyleSheet,
 	}
 }
 
@@ -200,11 +209,14 @@ func (r *Renderer) renderFrontMatter() div {
 }
 
 func (r *Renderer) renderTOC() div {
+	anythingToRender := false
 	partNumber, chapterNumber, prologueNumber := 0, 0, 0
 	part := li{}
 	listChildren := []interface{}{}
 
 	addNode := func(node interface{}) {
+		anythingToRender = true
+
 		// Indicates that we actually have one or more parts
 		if len(part.Children) != 0 {
 			if len(part.Children) < 2 {
@@ -230,6 +242,8 @@ func (r *Renderer) renderTOC() div {
 	}
 
 	addPart := func(text string) {
+		anythingToRender = true
+
 		if len(part.Children) != 0 {
 			listChildren = append(listChildren, part)
 			part = li{}
@@ -302,6 +316,10 @@ func (r *Renderer) renderTOC() div {
 
 	if len(part.Children) != 0 {
 		listChildren = append(listChildren, part)
+	}
+
+	if !anythingToRender {
+		return div{}
 	}
 
 	return div{

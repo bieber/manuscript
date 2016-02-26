@@ -32,6 +32,7 @@ type header struct {
 	XMLName    xml.Name `xml:"head"`
 	Title      string   `xml:"title"`
 	StyleSheet *link
+	Style      *style
 }
 
 type body struct {
@@ -44,6 +45,11 @@ type link struct {
 	Rel     string   `xml:"rel,attr"`
 	Type    string   `xml:"type,attr"`
 	HREF    string   `xml:"href,attr"`
+}
+
+type style struct {
+	XMLName xml.Name `xml:"style"`
+	Text    string   `xml:",innerxml"`
 }
 
 type div struct {
