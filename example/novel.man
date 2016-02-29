@@ -1,15 +1,15 @@
-@type				novel
-@title				Sample Novel
-@shortTitle			Novel
-@authorName			Realname Johnson
-@authorShortName	Johnson
-@authorByline		John Ralston
-@authorAddress		345 W. Elm St. #2
-					North Anderson, CT 90254
-@authorPhoneNumber	(941) 792-2354
-@authorEmail		john@ralston.com
-@authorOrgs			Member, PWA
-					Grand Master, Another Org
+@type                 novel
+@title                Sample Novel
+@shortTitle           Novel
+@authorName           Realname Johnson
+@authorShortName      Johnson
+@authorByline         John Ralston
+@authorAddress        345 W. Elm St. #2
+                      North Anderson, CT 90254
+@authorPhoneNumber    (941) 792-2354
+@authorEmail          john@ralston.com
+@authorOrgs           Member, PWA
+                      Grand Master, Another Org
 
 @notes
 
