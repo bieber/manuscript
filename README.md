@@ -2,10 +2,10 @@
 
 ## Introduction
 
-manuscript is a simple compiler to convert works of fiction from a
-plain-text format to one of the supported output formats.  This allows
-you to compose your story in any text-editor of your choice and store
-it in small files that you can easily store in a version-control
+manuscript is a simple command-line tool to convert works of fiction
+from a plain-text format to one of the supported output formats.  This
+allows you to compose your story in any text-editor of your choice and
+store it in small files that you can easily store in a version-control
 system (complete with text diffs in between versions).  The target
 output (for page-formatted renderers like PDF) is the manuscript
 format for [short stories](http://www.shunn.net/format/story.html) and
@@ -211,8 +211,9 @@ run
 go get github.com/bieber/manuscript
 ```
 
-to install the `manuscript` executable.  I will fill in binary
-downloads here once I get a release posted.
+to install the `manuscript` executable.  Binaries are also available
+for 32-bit and 64-bit Linux, OSX and Windows at the
+[releases](https://github.com/bieber/manuscript/releases) page.
 
 ## Questions
 
