@@ -11,6 +11,10 @@
 @authorOrgs			Member, PWA
 					Grand Master, Another Org
 
+@notes
+
+This doesn't go into the output.
+
 @begin
 
 Here's some text without a chapter, prologue, or part.  Let's throw an
