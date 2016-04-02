@@ -39,6 +39,12 @@ h1 {
 	text-align: center;
 }
 
+div.short_story h1 {
+	font-size: 48px;
+	text-align: center;
+	padding-top: 60px;
+}
+
 p.byline {
 	text-align: center;
 }
