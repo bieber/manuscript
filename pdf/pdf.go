@@ -20,9 +20,9 @@ package pdf
 
 import (
 	"fmt"
-	"github.com/StefanSchroeder/Golang-Roman"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/renderers"
+	"github.com/bieber/manuscript/util"
 	"github.com/dustin/go-humanize"
 	"github.com/jung-kurt/gofpdf"
 	"io"
@@ -89,9 +89,10 @@ func (r *Renderer) Render(fout io.Writer) error {
 
 	r.writeTitle()
 
-	for _, e := range r.document.Text {
-		r.writeElement(e)
-		r.lastElement = e
+	firstPart := true
+	for _, p := range r.document.Parts {
+		r.renderPart(p, firstPart)
+		firstPart = false
 	}
 
 	return r.pdf.Output(fout)
@@ -178,56 +179,12 @@ func (r *Renderer) writeTitle() {
 	}
 }
 
-func (r *Renderer) writeElement(element parser.DocumentElement) {
+func (r *Renderer) renderPart(part parser.Part, firstInDocument bool) {
 	pdf := r.pdf
 	w, h := pdf.GetPageSize()
-
-	switch e := element.(type) {
-	case parser.ParagraphBreak:
-		pdf.Write(doubleSpace, "\n")
-		pdf.SetX(2 * ptsPerInch)
-
-	case parser.PrologueBreak:
+	if !part.Anonymous {
+		text := util.PartLabel(part.Number, part.Title)
 		pdf.AddPage()
-		bookmarkText := "Prologue"
-		if e != "" {
-			bookmarkText = bookmarkText + ": " + string(e)
-		}
-
-		pdf.SetFont(fontFamily, "", fontSize)
-		pdf.SetXY(ptsPerInch, h/2)
-		pdf.Bookmark(bookmarkText, 0, -1)
-
-		pdf.WriteAligned(
-			w-2*ptsPerInch,
-			singleSpace,
-			"Prologue",
-			"C",
-		)
-
-		newY := h/2 + 2*doubleSpace
-		if e != "" {
-			pdf.SetXY(ptsPerInch, h/2+doubleSpace)
-			pdf.WriteAligned(
-				w-2*ptsPerInch,
-				singleSpace,
-				string(e),
-				"C",
-			)
-			newY += doubleSpace
-		}
-		pdf.SetXY(2*ptsPerInch, newY)
-
-	case parser.PartBreak:
-		r.partNumber++
-		r.chapterNumber = 0
-		pdf.AddPage()
-
-		text := "Part " + roman.Roman(r.partNumber)
-		if e != "" {
-			text += ": " + string(e)
-		}
-
 		pdf.SetFont(fontFamily, "", fontSize)
 		pdf.SetXY(ptsPerInch, h/2-2*doubleSpace)
 		pdf.Bookmark(text, 0, -1)
@@ -238,67 +195,112 @@ func (r *Renderer) writeElement(element parser.DocumentElement) {
 			"C",
 		)
 		pdf.SetXY(2*ptsPerInch, h/2)
+	}
 
-	case parser.ChapterBreak:
-		r.chapterNumber++
-		if _, ok := r.lastElement.(parser.PartBreak); !ok {
+	firstChapter := !firstInDocument
+	bookmarkLevel := 0
+	if !part.Anonymous {
+		bookmarkLevel++
+	}
+	for _, c := range part.Chapters {
+		r.renderChapter(c, firstChapter, bookmarkLevel)
+		firstChapter = false
+	}
+}
+
+func (r *Renderer) renderChapter(
+	chapter parser.Chapter,
+	firstInPart bool,
+	bookmarkLevel int,
+) {
+	pdf := r.pdf
+	w, h := pdf.GetPageSize()
+
+	if !chapter.Anonymous {
+		if !firstInPart {
 			pdf.AddPage()
 		}
-
-		bookmarkText := fmt.Sprintf("Chapter %d", r.chapterNumber)
-		if e != "" {
-			bookmarkText = bookmarkText + ": " + string(e)
-		}
-		bookmarkLevel := 0
-		if r.partNumber != 0 {
-			bookmarkLevel = 1
-		}
-
 		pdf.SetFont(fontFamily, "", fontSize)
 		pdf.SetXY(ptsPerInch, h/2)
+
+		bookmarkText := ""
+		labelText := ""
+		if chapter.Prologue {
+			bookmarkText = util.PrologueLabel(chapter.Title)
+			labelText = "Prologue"
+		} else {
+			bookmarkText = util.ChapterLabel(chapter.Number, chapter.Title)
+			labelText = fmt.Sprintf("Chapter %d", chapter.Number)
+		}
+
 		pdf.Bookmark(bookmarkText, bookmarkLevel, -1)
 		pdf.WriteAligned(
 			w-2*ptsPerInch,
 			singleSpace,
-			fmt.Sprintf("Chapter %d", r.chapterNumber),
+			labelText,
 			"C",
 		)
 
 		newY := h/2 + 2*doubleSpace
-		if e != "" {
+		if chapter.Title != "" {
 			pdf.SetXY(ptsPerInch, h/2+doubleSpace)
 			pdf.WriteAligned(
 				w-2*ptsPerInch,
 				singleSpace,
-				string(e),
+				chapter.Title,
 				"C",
 			)
 			newY += doubleSpace
 		}
 		pdf.SetXY(2*ptsPerInch, newY)
+	}
 
-	case parser.SceneBreak:
+	for _, s := range chapter.Scenes {
+		r.renderScene(s)
+	}
+}
 
+func (r *Renderer) renderScene(scene parser.Scene) {
+	pdf := r.pdf
+	w, _ := pdf.GetPageSize()
+
+	for _, p := range scene.Paragraphs {
+		r.renderParagraph(p)
+	}
+
+	if scene.EndsWithSceneBreak {
 		pdf.WriteAligned(w-2*ptsPerInch, doubleSpace, "#", "C")
 		pdf.Write(doubleSpace, "\n")
 		pdf.SetX(2 * ptsPerInch)
-
-	case parser.PlainText:
-		pdf.SetFont(fontFamily, "", fontSize)
-		pdf.Write(doubleSpace, string(e))
-
-	case parser.ItalicText:
-		pdf.SetFont(fontFamily, "U", fontSize)
-		pdf.Write(doubleSpace, string(e))
-
-	case parser.BoldText:
-		pdf.SetFont(fontFamily, "B", fontSize)
-		pdf.Write(doubleSpace, string(e))
-
-	case parser.BoldItalicText:
-		pdf.SetFont(fontFamily, "BU", fontSize)
-		pdf.Write(doubleSpace, string(e))
 	}
+}
+
+func (r *Renderer) renderParagraph(paragraph parser.Paragraph) {
+	pdf := r.pdf
+
+	for _, element := range paragraph.Text {
+		switch e := element.(type) {
+		case parser.PlainText:
+			pdf.SetFont(fontFamily, "", fontSize)
+			pdf.Write(doubleSpace, string(e))
+
+		case parser.ItalicText:
+			pdf.SetFont(fontFamily, "U", fontSize)
+			pdf.Write(doubleSpace, string(e))
+
+		case parser.BoldText:
+			pdf.SetFont(fontFamily, "B", fontSize)
+			pdf.Write(doubleSpace, string(e))
+
+		case parser.BoldItalicText:
+			pdf.SetFont(fontFamily, "BU", fontSize)
+			pdf.Write(doubleSpace, string(e))
+
+		}
+	}
+
+	pdf.Write(doubleSpace, "\n")
+	pdf.SetX(2 * ptsPerInch)
 }
 
 func (r *Renderer) writeHeader() {
