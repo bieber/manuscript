@@ -40,6 +40,48 @@ type Document struct {
 		EmailAddress     string
 		ProfessionalOrgs []string
 	}
+	Parts []Part
+	Text  []DocumentElement
+}
+
+// Part defines a part of the document, which may or may not have a
+// title, and may also be anonymous (meaning that the document hasn't
+// explicitly declared the beginning of a part and no title page
+// should be emitted).
+type Part struct {
+	Title     string
+	Anonymous bool
+	Number    int
+
+	Chapters []Chapter
+}
+
+// Chapter defines a chapter of the document, which may or may not
+// have a title, and may also be anonymous (meaning that the document
+// hasn't explicitly declared the beginning of a chapter and no title
+// should be emitted).  A Chapter may also be a prologue, which is
+// essentially the same but with a different type of header and
+// doesn't contribute to chapter numbering.
+type Chapter struct {
+	Title     string
+	Anonymous bool
+	Prologue  bool
+	Number    int
+
+	Scenes []Scene
+}
+
+// Scene defines a single scene in the text, which may or may not end
+// with a hard scene-break.
+type Scene struct {
+	EndsWithSceneBreak bool
+
+	Paragraphs []Paragraph
+}
+
+// Paragraph defines a single paragraph of text, composed of
+// potentially multiple sections of text with varying formatting.
+type Paragraph struct {
 	Text []DocumentElement
 }
 
@@ -93,20 +135,22 @@ type BoldItalicText string
 func Parse(rawFIN io.Reader) (d Document, err error) {
 	fin := bufio.NewReader(rawFIN)
 
-	d, err = parseMetadata(fin)
+	d, err = lexMetadata(fin)
 	if err != nil {
 		return
 	}
 
 	for {
 		es := []DocumentElement{}
-		es, err = parseParagraphOrDirective(fin)
+		es, err = lexParagraphOrDirective(fin)
 
 		if err == io.EOF {
 			if es != nil {
 				d.Text = append(d.Text, es...)
 			}
 			err = nil
+
+			d.Parts = parseText(d.Text)
 			return
 		}
 		if err != nil {
@@ -119,10 +163,10 @@ func Parse(rawFIN io.Reader) (d Document, err error) {
 	return
 }
 
-func parseMetadata(fin *bufio.Reader) (d Document, err error) {
+func lexMetadata(fin *bufio.Reader) (d Document, err error) {
 	name, args := "", []string{}
 	for name != "begin" {
-		name, args, err = parseMetadataDirective(fin)
+		name, args, err = lexMetadataDirective(fin)
 		if err != nil {
 			return
 		}
@@ -222,7 +266,7 @@ func parseMetadata(fin *bufio.Reader) (d Document, err error) {
 	return
 }
 
-func parseParagraphOrDirective(
+func lexParagraphOrDirective(
 	fin *bufio.Reader,
 ) (es []DocumentElement, err error) {
 	err = eatWhitespace(fin)
@@ -239,7 +283,7 @@ func parseParagraphOrDirective(
 		fin.UnreadRune()
 
 		var e DocumentElement
-		e, err = parseDirective(fin)
+		e, err = lexDirective(fin)
 		if err != nil {
 			return
 		}
@@ -248,7 +292,7 @@ func parseParagraphOrDirective(
 		}
 	} else {
 		fin.UnreadRune()
-		es, err = parseParagraph(fin)
+		es, err = lexParagraph(fin)
 	}
 
 	return
@@ -257,7 +301,7 @@ func parseParagraphOrDirective(
 // The key to metadata directives is that they will always be
 // terminated by the beginning '@' of another directive (except for
 // @begin), and their arguments may span multiple lines.
-func parseMetadataDirective(
+func lexMetadataDirective(
 	fin *bufio.Reader,
 ) (name string, args []string, err error) {
 	err = eatWhitespace(fin)
@@ -305,7 +349,7 @@ func parseMetadataDirective(
 
 // A regular directive in the text may only have a single,
 // newline-terminated argument.
-func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
+func lexDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 	r := '\000'
 	r, _, err = fin.ReadRune()
 	if r != '@' {
@@ -360,7 +404,7 @@ func parseDirective(fin *bufio.Reader) (e DocumentElement, err error) {
 	return
 }
 
-func parseParagraph(fin *bufio.Reader) (es []DocumentElement, err error) {
+func lexParagraph(fin *bufio.Reader) (es []DocumentElement, err error) {
 	buf := []rune{}
 	bold := false
 	italic := false
@@ -442,6 +486,149 @@ func parseParagraph(fin *bufio.Reader) (es []DocumentElement, err error) {
 	}
 
 	es = append(es, ParagraphBreak(true))
+	return
+}
+
+func parseText(text []DocumentElement) (ps []Part) {
+	var p Part
+	for partNumber := 0; len(text) != 0; {
+		p, text = parsePart(text)
+
+		if !p.Anonymous {
+			partNumber++
+		}
+		p.Number = partNumber
+
+		ps = append(ps, p)
+	}
+	return
+}
+
+func parsePart(text []DocumentElement) (p Part, rest []DocumentElement) {
+	if partBreak, ok := text[0].(PartBreak); ok {
+		p.Anonymous = false
+		p.Title = string(partBreak)
+		text = text[1:]
+	} else {
+		p.Anonymous = true
+	}
+
+	var c Chapter
+	for chapterNumber, prologueNumber := 0, 0; len(text) != 0; {
+		c, text = parseChapter(text)
+
+		if c.Prologue {
+			if !c.Anonymous {
+				prologueNumber++
+			}
+			c.Number = prologueNumber
+		} else {
+			if !c.Anonymous {
+				chapterNumber++
+			}
+			c.Number = chapterNumber
+		}
+
+		p.Chapters = append(p.Chapters, c)
+		if len(text) != 0 {
+			if _, ok := text[0].(PartBreak); ok {
+				break
+			}
+		}
+	}
+
+	rest = text
+	return
+}
+
+func parseChapter(text []DocumentElement) (c Chapter, rest []DocumentElement) {
+	if prologueBreak, ok := text[0].(PrologueBreak); ok {
+		c.Anonymous = false
+		c.Prologue = true
+		c.Title = string(prologueBreak)
+		text = text[1:]
+	} else if chapterBreak, ok := text[0].(ChapterBreak); ok {
+		c.Anonymous = false
+		c.Title = string(chapterBreak)
+		text = text[1:]
+	} else {
+		c.Anonymous = true
+	}
+
+	var s Scene
+outer:
+	for len(text) != 0 {
+		s, text = parseScene(text)
+
+		c.Scenes = append(c.Scenes, s)
+		if len(text) != 0 {
+			switch text[0].(type) {
+			case PrologueBreak:
+				break outer
+			case ChapterBreak:
+				break outer
+			case PartBreak:
+				break outer
+			}
+		}
+	}
+
+	rest = text
+	return
+}
+
+func parseScene(text []DocumentElement) (s Scene, rest []DocumentElement) {
+	var p Paragraph
+outer:
+	for len(text) != 0 {
+		p, text = parseParagraph(text)
+
+		s.Paragraphs = append(s.Paragraphs, p)
+		if len(text) != 0 {
+			switch text[0].(type) {
+			case SceneBreak:
+				text = text[1:]
+				s.EndsWithSceneBreak = true
+				break outer
+			case PrologueBreak:
+				break outer
+			case ChapterBreak:
+				break outer
+			case PartBreak:
+				break outer
+
+			}
+		}
+	}
+
+	rest = text
+	return
+}
+
+func parseParagraph(
+	text []DocumentElement,
+) (p Paragraph, rest []DocumentElement) {
+outer:
+	for len(text) != 0 {
+		switch text[0].(type) {
+		case ParagraphBreak:
+			text = text[1:]
+			break outer
+		case SceneBreak:
+			break outer
+		case PrologueBreak:
+			break outer
+		case ChapterBreak:
+			break outer
+		case PartBreak:
+			break outer
+		}
+
+		p.Text = append(p.Text, text[0])
+		text = text[1:]
+	}
+
+	rest = text
 	return
 }
 
