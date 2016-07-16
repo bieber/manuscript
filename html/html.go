@@ -36,10 +36,6 @@ type Renderer struct {
 	styleSheet     string
 	authorInfo     bool
 	includeTOC     bool
-	partNumber     int
-	chapterNumber  int
-	prologueNumber int
-	textPosition   int
 	document       parser.Document
 }
 
@@ -84,8 +80,8 @@ func (r *Renderer) Render(fout io.Writer) error {
 		}
 	}
 
-	for r.textPosition < len(r.document.Text) {
-		bodyContents = append(bodyContents, r.renderPart())
+	for _, p := range r.document.Parts {
+		bodyContents = append(bodyContents, r.renderPart(p))
 	}
 
 	storyTypeClass := ""
@@ -209,102 +205,164 @@ func (r *Renderer) renderFrontMatter() div {
 }
 
 func (r *Renderer) renderTOC() div {
-	anythingToRender := false
-	partNumber, chapterNumber, prologueNumber := 0, 0, 0
-	part := li{}
-	listChildren := []interface{}{}
+	outerChildren := []interface{}{}
 
-	addNode := func(node interface{}) {
-		anythingToRender = true
-
-		// Indicates that we actually have one or more parts
-		if len(part.Children) != 0 {
-			if len(part.Children) < 2 {
-				// There is no existing list of sub-items in this part yet
-				part.Children = append(
-					part.Children,
-					ol{
-						Class:    "toc_inner",
-						Children: []interface{}{node},
-					},
-				)
-			} else {
-				// There is, so just add to it
-				existingChildren := part.Children[1].(ol).Children
-				part.Children[1] = ol{
-					Class:    "toc_inner",
-					Children: append(existingChildren, node),
-				}
+	for _, p := range r.document.Parts {
+		children := []interface{}{}
+		for _, c := range p.Chapters {
+			if c.Anonymous {
+				continue
 			}
+
+			text, href := "", ""
+			if c.Prologue {
+				text = "Prologue"
+				if c.Title != "" {
+					text += ": " + c.Title
+				}
+				href = fmt.Sprintf("#prologue_%d_%d", p.Number, c.Number)
+			} else {
+				text = fmt.Sprintf("Chapter %d", c.Number)
+				if c.Title != "" {
+					text += ": " + c.Title
+				}
+				href = fmt.Sprintf("#chapter_%d_%d", p.Number, c.Number)
+			}
+
+			children = append(
+				children,
+				li{
+					Children: []interface{}{
+						a{
+							Text: text,
+							HREF: href,
+						},
+					},
+				},
+			)
+		}
+
+		if len(children) == 0 {
+			continue
+		}
+
+		if p.Anonymous {
+			outerChildren = append(outerChildren, children...)
 		} else {
-			listChildren = append(listChildren, node)
+			text := "Part " + roman.Roman(p.Number)
+			if p.Title != "" {
+				text += ": " + p.Title
+			}
+
+			outerChildren = append(
+				outerChildren,
+				li{
+					Children: []interface{}{
+						a{
+							Text: text,
+							HREF: fmt.Sprintf("#part_%d", p.Number),
+						},
+						ol{
+							Children: children,
+						},
+					},
+				},
+			)
 		}
 	}
 
-	addPart := func(text string) {
-		anythingToRender = true
+	if len(outerChildren) == 0 {
+		return div{}
+	}
 
-		if len(part.Children) != 0 {
-			listChildren = append(listChildren, part)
-			part = li{}
+	return div{
+		Class: "table_of_contents",
+		Children: []interface{}{
+			ol{Class: "toc_outer", Children: outerChildren},
+		},
+	}
+}
+
+func (r *Renderer) renderPart(part parser.Part) div {
+	class := "anonymous_part"
+	children := []interface{}{}
+
+	if !part.Anonymous {
+		class = "part"
+		text := "Part " + roman.Roman(part.Number)
+		if part.Title != "" {
+			text += ": " + part.Title
 		}
-		part.Children = append(
-			part.Children,
-			a{
-				HREF: fmt.Sprintf("#part_%d", partNumber),
-				Text: text,
+
+		children = append(
+			children,
+			h2{
+				Children: []interface{}{
+					a{
+						Name: fmt.Sprintf("part_%d", part.Number),
+						Text: text,
+					},
+				},
 			},
 		)
 	}
 
-	for _, element := range r.document.Text {
-		switch e := element.(type) {
+	for _, c := range part.Chapters {
+		children = append(children, r.renderChapter(c, part.Number))
+	}
 
-		case parser.PartBreak:
-			partNumber++
-			chapterNumber = 0
+	return div{
+		Class:    class,
+		Children: children,
+	}
 
-			text := "Part " + roman.Roman(partNumber)
-			if e != "" {
-				text += ": " + string(e)
-			}
-			addPart(text)
+}
 
-		case parser.PrologueBreak:
-			prologueNumber++
+func (r *Renderer) renderChapter(chapter parser.Chapter, partNumber int) div {
+	class := "anonymous_chapter"
+	children := []interface{}{}
+
+	if !chapter.Anonymous {
+		if chapter.Prologue {
+			class = "chapter prologue"
 
 			text := "Prologue"
-			if e != "" {
-				text += ": " + string(e)
+			if chapter.Title != "" {
+				text += ": " + chapter.Title
 			}
 
-			addNode(
-				li{
+			children = append(
+				children,
+				h3{
 					Children: []interface{}{
 						a{
-							HREF: fmt.Sprintf("#prologue_%d", prologueNumber),
+							Name: fmt.Sprintf(
+								"prologue_%d_%d",
+								partNumber,
+								chapter.Number,
+							),
 							Text: text,
 						},
 					},
 				},
 			)
+		} else {
+			class = "chapter"
 
-		case parser.ChapterBreak:
-			chapterNumber++
-
-			text := fmt.Sprintf("Chapter %d", chapterNumber)
-			if e != "" {
-				text += ": " + string(e)
+			text := fmt.Sprintf("Chapter %d", chapter.Number)
+			if chapter.Title != "" {
+				text += ": " + chapter.Title
 			}
 
-			addNode(
-				li{
+			children = append(
+				children,
+				h3{
 					Children: []interface{}{
 						a{
-							HREF: fmt.Sprintf(
-								"#chapter_%d_%d",
+							Name: fmt.Sprintf(
+								"chapter_%d_%d",
 								partNumber,
-								chapterNumber,
+								chapter.Number,
 							),
 							Text: text,
 						},
@@ -314,143 +372,8 @@ func (r *Renderer) renderTOC() div {
 		}
 	}
 
-	if len(part.Children) != 0 {
-		listChildren = append(listChildren, part)
-	}
-
-	if !anythingToRender {
-		return div{}
-	}
-
-	return div{
-		Class:    "table_of_contents",
-		Children: []interface{}{ol{Class: "toc_outer", Children: listChildren}},
-	}
-}
-
-func (r *Renderer) renderPart() div {
-	// We may not always have an explicit part marker (short stories,
-	// novels without parts, or just prologue text before the first
-	// part of a novel).  For these cases, we'll still render using
-	// the regular procedure for a part but just leave out the header
-	// and call it an "anonymous part."
-	class := "anonymous_part"
-	children := []interface{}{}
-
-	if e, ok := r.peekElement().(parser.PartBreak); ok {
-		r.partNumber++
-		r.chapterNumber = 0
-
-		class = "part"
-		text := "Part " + roman.Roman(r.partNumber)
-		if e != "" {
-			text += ": " + string(e)
-		}
-
-		children = append(
-			children,
-			h2{
-				Children: []interface{}{
-					a{
-						Name: fmt.Sprintf("part_%d", r.partNumber),
-						Text: text,
-					},
-				},
-			},
-		)
-		r.nextElement()
-	}
-
-	for r.hasNextElement() {
-		if _, ok := r.peekElement().(parser.PartBreak); ok {
-			break
-		}
-
-		children = append(
-			children,
-			r.renderChapter(),
-		)
-	}
-
-	return div{
-		Class:    class,
-		Children: children,
-	}
-
-}
-
-func (r *Renderer) renderChapter() div {
-	// We may not always have an explicit chapter or prologue marker
-	// (short stories, or just loose text at the beginning of a story
-	// or part).  In that case we still render using the normal method
-	// for a chapter, but call it an "anonymous chapter."
-	class := "anonymous_chapter"
-	children := []interface{}{}
-
-	switch e := r.peekElement().(type) {
-	case parser.PrologueBreak:
-		r.prologueNumber++
-		class = "chapter prologue"
-
-		text := "Prologue"
-		if e != "" {
-			text += ": " + string(e)
-		}
-
-		children = append(
-			children,
-			h3{
-				Children: []interface{}{
-					a{
-						Name: fmt.Sprintf("prologue_%d", r.prologueNumber),
-						Text: text,
-					},
-				},
-			},
-		)
-
-		r.nextElement()
-
-	case parser.ChapterBreak:
-		r.chapterNumber++
-		class = "chapter"
-
-		text := fmt.Sprintf("Chapter %d", r.chapterNumber)
-		if e != "" {
-			text += ": " + string(e)
-		}
-
-		children = append(
-			children,
-			h3{
-				Children: []interface{}{
-					a{
-						Name: fmt.Sprintf(
-							"chapter_%d_%d",
-							r.partNumber,
-							r.chapterNumber,
-						),
-						Text: text,
-					},
-				},
-			},
-		)
-
-		r.nextElement()
-	}
-
-outer:
-	for r.hasNextElement() {
-		switch r.peekElement().(type) {
-		case parser.PartBreak:
-			break outer
-		case parser.PrologueBreak:
-			break outer
-		case parser.ChapterBreak:
-			break outer
-		}
-
-		children = append(children, r.renderScene())
+	for _, s := range chapter.Scenes {
+		children = append(children, r.renderScene(s))
 	}
 
 	return div{
@@ -459,24 +382,10 @@ outer:
 	}
 }
 
-func (r *Renderer) renderScene() div {
+func (r *Renderer) renderScene(scene parser.Scene) div {
 	children := []interface{}{}
-
-outer:
-	for r.hasNextElement() {
-		switch r.peekElement().(type) {
-		case parser.PartBreak:
-			break outer
-		case parser.PrologueBreak:
-			break outer
-		case parser.ChapterBreak:
-			break outer
-		case parser.SceneBreak:
-			r.nextElement()
-			break outer
-		}
-
-		children = append(children, r.renderParagraph())
+	for _, p := range scene.Paragraphs {
+		children = append(children, r.renderParagraph(p))
 	}
 
 	return div{
@@ -485,33 +394,17 @@ outer:
 	}
 }
 
-func (r *Renderer) renderParagraph() p {
+func (r *Renderer) renderParagraph(paragraph parser.Paragraph) p {
 	children := []interface{}{}
-
-outer:
-	for r.hasNextElement() {
-		switch r.peekElement().(type) {
-		case parser.PartBreak:
-			break outer
-		case parser.PrologueBreak:
-			break outer
-		case parser.ChapterBreak:
-			break outer
-		case parser.SceneBreak:
-			break outer
-		case parser.ParagraphBreak:
-			r.nextElement()
-			break outer
-		}
-
-		children = append(children, r.renderElement())
+	for _, e := range paragraph.Text {
+		children = append(children, r.renderElement(e))
 	}
 
 	return p{Children: children}
 }
 
-func (r *Renderer) renderElement() interface{} {
-	switch e := r.nextElement().(type) {
+func (r *Renderer) renderElement(element parser.DocumentElement) interface{} {
+	switch e := element.(type) {
 	case parser.PlainText:
 		return span{Text: string(e)}
 	case parser.ItalicText:
@@ -527,22 +420,4 @@ func (r *Renderer) renderElement() interface{} {
 			),
 		)
 	}
-}
-
-func (r *Renderer) hasNextElement() bool {
-	return r.textPosition < len(r.document.Text)
-}
-
-func (r *Renderer) peekElement() parser.DocumentElement {
-	return r.document.Text[r.textPosition]
-}
-
-func (r *Renderer) nextElement() parser.DocumentElement {
-	tp := r.textPosition
-	r.textPosition++
-	return r.document.Text[tp]
-}
-
-func (r *Renderer) rewindElement() {
-	r.textPosition--
 }
