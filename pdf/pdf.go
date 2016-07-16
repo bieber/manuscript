@@ -41,9 +41,6 @@ const doubleSpace = fontSize * 2
 type Renderer struct {
 	pageSize        string
 	pageOrientation string
-	partNumber      int
-	chapterNumber   int
-	lastElement     parser.DocumentElement
 	document        parser.Document
 	pdf             *gofpdf.Fpdf
 }
@@ -77,10 +74,6 @@ func New(
 // Render writes the requested document out to the specified io.Writer
 // as a PDF file formatted in manuscript format.
 func (r *Renderer) Render(fout io.Writer) error {
-	r.partNumber = 0
-	r.chapterNumber = 0
-	r.lastElement = nil
-
 	r.pdf = gofpdf.New(r.pageOrientation, "pt", r.pageSize, "")
 	r.pdf.SetMargins(ptsPerInch, ptsPerInch, ptsPerInch)
 	r.pdf.SetAutoPageBreak(true, ptsPerInch)
