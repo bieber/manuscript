@@ -28,16 +28,24 @@ import (
 // the nearest 500 for anything longer.
 func (d Document) WordCount() int64 {
 	count := 0
-	for _, e := range d.Text {
-		switch e := e.(type) {
-		case PlainText:
-			count += len(strings.Split(string(e), " "))
-		case ItalicText:
-			count += len(strings.Split(string(e), " "))
-		case BoldText:
-			count += len(strings.Split(string(e), " "))
-		case BoldItalicText:
-			count += len(strings.Split(string(e), " "))
+	for _, p := range d.Parts {
+		for _, c := range p.Chapters {
+			for _, s := range c.Scenes {
+				for _, p := range s.Paragraphs {
+					for _, e := range p.Text {
+						switch e := e.(type) {
+						case PlainText:
+							count += len(strings.Split(string(e), " "))
+						case ItalicText:
+							count += len(strings.Split(string(e), " "))
+						case BoldText:
+							count += len(strings.Split(string(e), " "))
+						case BoldItalicText:
+							count += len(strings.Split(string(e), " "))
+						}
+					}
+				}
+			}
 		}
 	}
 

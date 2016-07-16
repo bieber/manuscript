@@ -33,10 +33,10 @@ import (
 // Renderer provides a Render method to render the given document to
 // an HTML file.
 type Renderer struct {
-	styleSheet     string
-	authorInfo     bool
-	includeTOC     bool
-	document       parser.Document
+	styleSheet string
+	authorInfo bool
+	includeTOC bool
+	document   parser.Document
 }
 
 // New constructs a new Renderer for the given document and

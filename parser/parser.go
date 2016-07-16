@@ -41,7 +41,6 @@ type Document struct {
 		ProfessionalOrgs []string
 	}
 	Parts []Part
-	Text  []DocumentElement
 }
 
 // Part defines a part of the document, which may or may not have a
@@ -140,24 +139,23 @@ func Parse(rawFIN io.Reader) (d Document, err error) {
 		return
 	}
 
+	text := []DocumentElement{}
 	for {
 		es := []DocumentElement{}
 		es, err = lexParagraphOrDirective(fin)
 
 		if err == io.EOF {
-			if es != nil {
-				d.Text = append(d.Text, es...)
-			}
+			text = append(text, es...)
 			err = nil
 
-			d.Parts = parseText(d.Text)
+			d.Parts = parseText(text)
 			return
 		}
 		if err != nil {
 			return
 		}
 
-		d.Text = append(d.Text, es...)
+		text = append(text, es...)
 	}
 
 	return
