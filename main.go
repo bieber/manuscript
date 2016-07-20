@@ -21,10 +21,10 @@ package main
 import (
 	"fmt"
 	"github.com/bieber/conflag"
+	"github.com/bieber/manuscript/bbcode"
 	"github.com/bieber/manuscript/html"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/pdf"
-	"github.com/bieber/manuscript/bbcode"
 	"github.com/bieber/manuscript/renderers"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
