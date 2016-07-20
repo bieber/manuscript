@@ -180,7 +180,7 @@ The available renderers are as follows:
 - `pdf`: This is the default renderer, which writes your story out to a
   PDF file in manuscript format.  It accepts the following options:
 
-  -`pageSize`: Sets the page size of the PDF file.  It defaults to
+  - `pageSize`: Sets the page size of the PDF file.  It defaults to
    `Letter`, other valid options are `A3`, `A4`, `A5`, and `Legal`.
 
   - `pageOrientation`: Sets the orientation of the page.  Must be
