@@ -24,6 +24,7 @@ import (
 	"github.com/bieber/manuscript/html"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/pdf"
+	"github.com/bieber/manuscript/bbcode"
 	"github.com/bieber/manuscript/renderers"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
@@ -45,8 +46,9 @@ type Renderer interface {
 }
 
 var allRenderers = map[string]renderers.RendererConstructor{
-	"pdf":  pdf.New,
-	"html": html.New,
+	"pdf":    pdf.New,
+	"html":   html.New,
+	"bbcode": bbcode.New,
 }
 
 func main() {

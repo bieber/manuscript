@@ -47,10 +47,10 @@ the information section of a story:
 @authorName       Mortimer Willis
 @authorShortName  Willis
 @authorAddress    1324 W Elm Ave. #1
-                  North Boynton, CT 100
+				  North Boynton, CT 100
 @authorEmail      mortimer@willis.com
 @authorOrgs       Member, PWA
-                  Member, Another Writing Org
+				  Member, Another Writing Org
 ```
 
 You may use any of the following directives:
@@ -184,23 +184,26 @@ The available renderers are as follows:
    `Letter`, other valid options are `A3`, `A4`, `A5`, and `Legal`.
 
   - `pageOrientation`: Sets the orientation of the page.  Must be
-    either `P` or `Portrait` for portrait orientation, or `L` or
-    `Landscape` for landscape orientation.  Defaults to portrait.
+	either `P` or `Portrait` for portrait orientation, or `L` or
+	`Landscape` for landscape orientation.  Defaults to portrait.
 
 - `html`: Renders your story to an HTML file.  It accepts the
   following options:
 
   - `styleSheet`: Allows you to set a path in the HTML file to a
-    custom style sheet.  If set, the default style will not be written
-    to the output file and your custom style sheet will be used
-    instead.
+	custom style sheet.  If set, the default style will not be written
+	to the output file and your custom style sheet will be used
+	instead.
 
 
   - `authorInfo`: Set this to `true` or `yes` to include author info,
-    which is normally excluded from HTML output.
+	which is normally excluded from HTML output.
 
   - `includeTOC`: Set this to `true` or `yes` to include a table of
-    contents in the HTML output.
+	contents in the HTML output.
+
+- `bbcode`: Renders your story to bbcode text suitable for posting to
+  forums.
 
 ## Installation
 
