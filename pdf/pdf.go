@@ -262,6 +262,13 @@ func (r *Renderer) renderScene(scene parser.Scene) {
 	}
 
 	if scene.EndsWithSceneBreak {
+		// This is another addition I don't fully understand.  Without
+		// this line, Using WriteAligned at the very beginning of a
+		// page seems to cause some bizarre linebreak behavior in the
+		// header, but if I write a single space before the hash mark,
+		// which doesn't seem to visibly affect the rendering, the
+		// problem goes away.
+		pdf.Write(singleSpace, " ")
 		pdf.WriteAligned(w-2*ptsPerInch, doubleSpace, "#", "C")
 		pdf.Write(doubleSpace, "\n")
 		pdf.SetX(2 * ptsPerInch)
