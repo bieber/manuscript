@@ -205,6 +205,8 @@ The available renderers are as follows:
 - `bbcode`: Renders your story to bbcode text suitable for posting to
   forums.
 
+- `markdown`: Renders your story to markdown text.
+
 ## Installation
 
 If you have the Go language set up on your computer, you can simply

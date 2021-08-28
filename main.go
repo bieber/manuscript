@@ -23,6 +23,7 @@ import (
 	"github.com/bieber/conflag"
 	"github.com/bieber/manuscript/bbcode"
 	"github.com/bieber/manuscript/html"
+	"github.com/bieber/manuscript/markdown"
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/pdf"
 	"github.com/bieber/manuscript/renderers"
@@ -46,9 +47,10 @@ type Renderer interface {
 }
 
 var allRenderers = map[string]renderers.RendererConstructor{
-	"pdf":    pdf.New,
-	"html":   html.New,
-	"bbcode": bbcode.New,
+	"pdf":      pdf.New,
+	"html":     html.New,
+	"bbcode":   bbcode.New,
+	"markdown": markdown.New,
 }
 
 func main() {

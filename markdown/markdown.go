@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 Robert Bieber
+/* Copyright (c) 2021 Robert Bieber
  *
  * This file is part of manuscript.
  *
@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package bbcode
+package markdown
 
 import (
 	"bytes"
@@ -26,10 +26,15 @@ import (
 	"github.com/bieber/manuscript/parser"
 	"github.com/bieber/manuscript/renderers"
 	"io"
+	"strings"
 )
 
+func escape(s string) string {
+	return strings.ReplaceAll(s, "*", "\\*")
+}
+
 // Renderer provides a Render method to render the given document to
-// bbcode text.
+// markdown text.
 type Renderer struct {
 	document parser.Document
 	buffer   bytes.Buffer
@@ -45,7 +50,7 @@ func New(
 }
 
 // Render writes the requested document out to the specified io.Writer
-// as bbcode text.
+// as markdown text.
 func (r *Renderer) Render(fout io.Writer) error {
 	for _, p := range r.document.Parts {
 		err := r.renderPart(p)
@@ -65,7 +70,7 @@ func (r *Renderer) renderPart(part parser.Part) error {
 			text += ": " + part.Title
 		}
 
-		_, err := r.buffer.WriteString("[b]" + text + "[/b]\n\n")
+		_, err := r.buffer.WriteString("##" + escape(text) + "##\n\n")
 		if err != nil {
 			return err
 		}
@@ -96,7 +101,7 @@ func (r *Renderer) renderChapter(chapter parser.Chapter) error {
 			}
 		}
 
-		_, err := r.buffer.WriteString("[b]" + text + "[/b]\n\n")
+		_, err := r.buffer.WriteString("###" + escape(text) + "###\n\n")
 		if err != nil {
 			return err
 		}
@@ -148,17 +153,17 @@ func (r *Renderer) renderElement(element parser.DocumentElement) error {
 	var err error
 	switch e := element.(type) {
 	case parser.PlainText:
-		_, err = r.buffer.WriteString(string(e))
+		_, err = r.buffer.WriteString(escape(string(e)))
 	case parser.ItalicText:
-		_, err = r.buffer.WriteString("[i]" + string(e) + "[/i]")
+		_, err = r.buffer.WriteString("*" + escape(string(e)) + "*")
 	case parser.BoldText:
-		_, err = r.buffer.WriteString("[b]" + string(e) + "[/b]")
+		_, err = r.buffer.WriteString("**" + escape(string(e)) + "**")
 	case parser.BoldItalicText:
-		_, err = r.buffer.WriteString("[b][i]" + string(e) + "[/i][/b]")
+		_, err = r.buffer.WriteString("***" + escape(string(e)) + "***")
 	default:
 		panic(
 			errors.New(
-				"bbcode: Unexpected document element passed to renderElement",
+				"markdown: Unexpected document element passed to renderElement",
 			),
 		)
 	}
